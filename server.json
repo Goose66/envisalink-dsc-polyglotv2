@@ -1,0 +1,19 @@
+{
+    "name": "EnvisaLink-DSC",
+    "docs": "https://github.com/Goose66/envisalink-dsc-polyglotv2",
+    "type": "python3",
+    "executable": "envisalink-poly.py",
+    "install": "install.sh",
+    "description": "Accesses a DSC PowerSeries alarm panel through an EnvisaLink EVL-3/4 to allow ISY 994i to control alarm functions and respond to events.",
+    "notice": "",
+    "credits": [
+        {
+            "title": "autelis-poly: a Polyglot NodeServer for Autelis Pool Control Integration",
+            "author": "W. Randy King (Goose66)",
+            "version": "0.0.1",
+            "date": "April 19, 2018",
+            "source": "https://github.com/Goose66/envisalink-dsc-polyglotv2",
+            "license": "https://github.com/Goose66/envisalink-dsc-polyglotv2/master/LICENSE"
+        }
+    ]
+}

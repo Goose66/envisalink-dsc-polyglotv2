@@ -1,0 +1,44 @@
+ND-CONTROLLER-NAME = DSC Alarm Panel
+ND-CONTROLLER-ICON = GenericCtl
+ST-ACP-ST-NAME = NodeServer Online
+ST-ACP-GV0-NAME = Smoke Alarm
+ST-ACP-GV1-NAME = Fire Alarm
+ST-ACP-GV2-NAME = Aux Alarm
+ST-ACP-GV3-NAME = Police Alarm
+IX_ACP_AS-0 = Ok
+IX_ACP_AS-1 = Alarming
+ST-ACP-GV4-NAME = Bell Trouble
+ST-ACP-GV5-NAME = Battery Trouble
+ST-ACP-GV6-NAME = AC Trouble
+ST-ACP-GV7-NAME = FTC Trouble
+ST-ACP-GV8-NAME = Tamper Trouble
+CMD-ACP-PANIC_FIRE-NAME = Trigger Fire
+CMD-ACP-PANIC_AUX-NAME = Trigger Ambulance
+CMD-ACP-PANIC_POLICE-NAME = Trigger Police
+
+ND-ZONE-NAME = Alarm Zone
+ND-ZONE-ICON = Input
+ST-AZN-ST-NAME = Zone State
+IX_AZN_ST-0 = Closed
+IX_AZN_ST-1 = Open
+IX_AZN_ST-2 = Alarming
+ST-AZN-GV0-NAME = Bypassed
+
+ND-PARTITION-NAME = Alarm Partition
+ND-PARTITION-ICON = GenericCtl
+ST-APA-ST-NAME = Partition State
+IX_APA_ST-0 = Ready
+IX_APA_ST-1 = Not Ready
+IX_APA_ST-2 = Armed Away
+IX_APA_ST-3 = Armed Stay
+IX_APA_ST-4 = Armed Away Zero-Entry
+IX_APA_ST-5 = Armed Stay Zero-Entry
+IX_APA_ST-6 = Alarming
+IX_APA_ST-7 = Exit Delay
+IX_APA_ST-8 = Entry Delay
+ST-APA-GV0-NAME = Chime Enabled
+CMD-APA-DISARM-NAME = Disarm
+CMD-APA-ARM_AWAY-NAME = Arm Away
+CMD-APA-ARM_STAY-NAME = Arm Stay
+CMD-APA-ARM_ZEROENTRY-NAME = Arm Zero Entry
+

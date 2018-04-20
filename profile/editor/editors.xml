@@ -1,0 +1,18 @@
+<editors>
+  <!-- ISY Bool UOM -->
+  <editor id="ACP_BOOL">
+    <range uom="2" subset="0,1" />
+  </editor>
+  <!-- ISY Index UOM with custom labels in NLS -->
+  <editor id="ACP_ALARM_STATE">
+    <range uom="25" subset="0,1" nls="IX_ACP_AS" />
+  </editor>
+  <!-- ISY Index UOM with custom labels in NLS -->
+  <editor id="AZN_STATE">
+    <range uom="25" subset="0-2" nls="IX_AZN_ST" />
+  </editor>
+  <!-- ISY Index UOM with custom labels in NLS -->
+  <editor id="APA_STATE">
+    <range uom="25" subset="0-8" nls="IX_APA_ST" />
+  </editor>
+</editors>
