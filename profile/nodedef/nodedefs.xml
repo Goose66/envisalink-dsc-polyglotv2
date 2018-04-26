@@ -46,6 +46,20 @@
     		<cmd id="ARM_AWAY" />
 		  	<cmd id="ARM_STAY" />
 			  <cmd id="ARM_ZEROENTRY" />
+        <cmd id="TOGGLE_CHIME" />
+      </accepts>
+    </cmds>
+  </nodeDef>
+  <nodeDef id="COMMAND_OUTPUT" nls="ACO" >
+    <sts>
+      <st id="ST" editor="ACO_STATE" />
+	  </sts>
+    <cmds>
+      <sends>
+      	<cmd id="DON" />
+      </sends>
+      <accepts>
+        <cmd id="DON" />
       </accepts>
     </cmds>
   </nodeDef>

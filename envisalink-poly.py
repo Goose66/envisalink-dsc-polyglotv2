@@ -15,6 +15,7 @@ _LOGGER = polyinterface.LOGGER
 
 _PART_ADDR_FORMAT_STRING = "partition%1d"
 _ZONE_ADDR_FORMAT_STRING = "zone%02d"
+_CMD_OUTPUT_ADDR_FORMAT_STRING = "cmdout%02d"
 
 # Node class for partitions
 class Partition(polyinterface.Node):
@@ -104,6 +105,15 @@ class Partition(polyinterface.Node):
         else:
             _LOGGER.warning("Call to EnvisaLink to disarm partition failed for node %s.", self.address)
 
+    # Toggle the door chime for the partition (the listener thread will update the corresponding driver values)
+    def toggle_chime(self, command):
+        
+        # send door chime toggle keystrokes to EnvisaLink device for the partition numner
+        if self.controller.envisalink.send_command(EVL.CMD_SEND_KEYSTROKES, "%1d%s" % (self.partitionNum, EVL.KEYS_TOGGLE_DOOR_CHIME)):
+            pass
+        else:
+            _LOGGER.warning("Call to EnvisaLink to toggle door chime failed for node %s.", self.address)
+
     drivers = [
         {"driver": "ST", "value": 0, "uom": _ISY_INDEX_UOM},
         {"driver": "GV0", "value": 0, "uom": _ISY_BOOL_UOM}
@@ -112,7 +122,8 @@ class Partition(polyinterface.Node):
         "DISARM": disarm,
         "ARM_AWAY": arm_away,
         "ARM_STAY": arm_stay,
-        "ARM_ZEROENTRY": arm_zero_entry
+        "ARM_ZEROENTRY": arm_zero_entry,
+        "TOGGLE_CHIME": toggle_chime
     }
 
 # Node class for zones
@@ -159,6 +170,44 @@ class Zone(polyinterface.Node):
     ]
     commands = {}
 
+# Node class for zones
+class CommandOutput(polyinterface.Node):
+
+    id = "COMMAND_OUTPUT"
+
+    # Override init to handle partition number
+    def __init__(self, controller, primary, cmdOutNum):
+        super(CommandOutput, self).__init__(controller, primary, _CMD_OUTPUT_ADDR_FORMAT_STRING % cmdOutNum, "Command Output %02d" % cmdOutNum)
+        self.partitionNum = 1 # partition 1 only
+        self.cmdOutputNum = cmdOutNum  
+
+    # Update ST driver value based on the command received from the EnvisaLink for the zone
+    def set_active_state(self):
+
+        # send the DON command for the node - allows node to be scene controller
+            self.reportCmd("DON")
+            self.setDriver("ST", 1) # Active
+
+    def clear_active_state(self):
+        
+            self.setDriver("ST", 0) # Off
+
+    # Activate the command output on the DSC Alarm Panel (the listener thread will update the corresponding driver value)
+    def cmd_don(self, command):
+        
+        # Activate the command output
+        if self.controller.envisalink.send_command(EVL.CMD_ACTIVATE_CMD_OUTPUT, "%1d%1d" % (self.partitionNum, self.cmdOutputNum)):
+            pass
+        else:
+            _LOGGER.warning("Call to EnvisaLink to activate command output failed for node %s.", self.address)
+
+    drivers = [
+        {"driver": "ST", "value": 0, "uom": _ISY_INDEX_UOM}
+    ]
+    commands = {
+        "DON": cmd_don
+    }
+
 # Node class for controller
 class AlarmPanel(polyinterface.Controller):
 
@@ -169,7 +218,7 @@ class AlarmPanel(polyinterface.Controller):
         self.name = "Alarm Panel"
         self.envisalink = None
         self.userCode = ""
-        self.pollingInterval = 60
+        self.numPartitions = 0
 
     # Update the driver values based on the command received from the EnvisaLink for the partition
     def update_state_values(self, cmd, data):
@@ -274,17 +323,23 @@ class AlarmPanel(polyinterface.Controller):
             ip = customParams["ipaddress"]
             password = customParams["password"]
             self.userCode = customParams["usercode"]
-            numPartitions = int(customParams["numpartitions"])
-            numZones = int(customParams["numzones"])
         except KeyError:
             _LOGGER.error("Missing controller settings in configuration.")
             raise
 
-        # get polling intervals and configuration settings from custom parameters
+        # get number of partitions and number of zones
         try:
-            self.pollingInterval = int(customParams["pollinginterval"])
+            self.numPartitions = int(customParams["numpartitions"])
         except (KeyError, ValueError):
-            self.pollingInterval = 60
+            self.numPartitions = 1
+
+        try:
+            numZones = int(customParams["numzones"])
+        except (KeyError, ValueError):
+            numZones = 8
+
+        # For now, four command outs on partition 1 supported
+        numCmdOuts = 4
 
         # dump the self._nodes to the log
         #_LOGGER.debug("Current Node Configuration: %s", str(self._nodes))
@@ -293,7 +348,7 @@ class AlarmPanel(polyinterface.Controller):
         self.envisalink = EVL.EnvisaLinkInterface(ip, password, self.process_command, _LOGGER)
 
         #  setup the nodes based on the counts of zones and partition in the configuration parameters
-        self.build_nodes(numPartitions, numZones)
+        self.build_nodes(self.numPartitions, numZones, numCmdOuts)
 
         # perform an initial polling
         self.initial_poll()
@@ -315,21 +370,8 @@ class AlarmPanel(polyinterface.Controller):
 
         pass
         
-        # if node server is not setup yet, return
-        #if self.envisalink is None:
-            #return
-
-        #currentTime = time.time()
-
-        # check for elapsed polling interval
-        #if (currentTime - self.lastPoll) >= self.pollingInterval:
-
-            # poll the device to generate state commands
-            #self.poll_device()
-            #self.lastPoll = currentTime
-
-    # Create nodes for zones and partitions as specified by the parameters
-    def build_nodes(self, numPartitions, numZones):
+    # Create nodes for zones, partitions, and command outputs as specified by the parameters
+    def build_nodes(self, numPartitions, numZones, numCmdOuts):
 
         # create partition nodes for the number of partitions specified
         for i in range(0, numPartitions):
@@ -342,6 +384,12 @@ class AlarmPanel(polyinterface.Controller):
             
             # create a partition node and add it to the node list
             self.addNode(Zone(self, self.address, i+1))
+
+        # create command output nodes for the number of command outputs specified
+        for i in range(0, numCmdOuts):
+            
+            # create a command output node and add it to the node list
+            self.addNode(CommandOutput(self, self.address, i+1))
                        
     # Intially poll the EnvisaLink for status
     def initial_poll(self):
@@ -350,12 +398,14 @@ class AlarmPanel(polyinterface.Controller):
         # Only generates general zone status and trouble LED updates
         self.envisalink.send_command(EVL.CMD_STATUS_REPORT)
 
-        # wait for one second
+        # the status polling command generates a considerable amount of response commands
+        # from the EnvisaLink, so give it a second to process before dumping the
+        # bypass zones and/or zone timers
         time.sleep(1)
 
-        # dump the bypass zones by entering and leaving the bypass function on the keypad for
-        # partition 1
-        self.envisalink.send_command(EVL.CMD_SEND_KEYSTROKES, "1*1#")
+        # dump the bypass zones for each partition
+        for part in range(1, self.numPartitions + 1):
+            self.envisalink.send_command(EVL.CMD_SEND_KEYSTROKES, "%1d%s" % (part, EVL.KEYS_DUMP_BYPASS_ZONES))
 
     # Callback function for listener thread
     def process_command(self, cmd, data):
@@ -387,8 +437,19 @@ class AlarmPanel(polyinterface.Controller):
                     retVal = True
                     break
 
+            # if the command is partition ready for zone 1, also clear any active command output state flags
+            if cmd == EVL.CMD_PARTITION_READY and partNum == 1:
+                for addr in self.nodes:
+                    if addr[:6] == _CMD_OUTPUT_ADDR_FORMAT_STRING[:6]:
+                        self.nodes[addr].clear_active_state()
+        
         # Pass zone status commands to correct zone node
-        elif cmd in (EVL.CMD_ZONE_RESTORED, EVL.CMD_ZONE_OPEN, EVL.CMD_ZONE_ALARM, EVL.CMD_ZONE_ALARM_RESTORED):
+        elif cmd in (
+            EVL.CMD_ZONE_RESTORED,
+            EVL.CMD_ZONE_OPEN,
+            EVL.CMD_ZONE_ALARM,
+            EVL.CMD_ZONE_ALARM_RESTORED
+        ):
 
             # get the zone number from the data
             zoneNum = int(data.decode("ascii")[-3:])
@@ -423,6 +484,8 @@ class AlarmPanel(polyinterface.Controller):
             EVL.CMD_SYSTEM_TAMPER,
             EVL.CMD_SYSTEM_TAMPER_RESTORED
         ):
+
+            # update the driver values of the node from the commands
             self.update_state_values(cmd, data)
 
             retVal = True
@@ -442,7 +505,7 @@ class AlarmPanel(polyinterface.Controller):
                            + leHexString[2:4]
                            + leHexString[:2])
             
-            # convert the hex string to a 64-bit bitfield representing the
+            # convert the big-endian hex string to a 64-bit bitfield representing the
             # bypass status of each of the 64 zones
             bypassFlags = bin(int(beHexString, base=16))[2:].zfill(64)    
             
@@ -454,13 +517,27 @@ class AlarmPanel(polyinterface.Controller):
             
             retVal = True
 
+        elif cmd in (EVL.CMD_COMMAND_OUTPUT_PRESSED):
+            
+            # get the partition and command output number from the data
+            partNum = int(data.decode("ascii")[0:1])
+            cmdOutNum = int(data.decode("ascii")[1:2])
+    
+            # set the active state in the corresponding command output node
+            for addr in self.nodes:
+                if addr == _CMD_OUTPUT_ADDR_FORMAT_STRING % cmdOutNum:
+                    self.nodes[addr].set_active_state()
+            
+            retVal = True
+
         # handle user code request
-        elif cmd in (EVL.CMD_CODE_REQD, EVL.CMD_COMMAND_OUTPUT_PRESSED):
+        elif cmd in (EVL.CMD_CODE_REQD):
 
             # send the user code
-            self.envisalink.send_command(CMD_SEND_CODE, self.userCode)
+            self.envisalink.send_command(EVL.CMD_SEND_CODE, self.userCode)
 
             retVal = True
+
 
         return retVal
 

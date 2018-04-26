@@ -24,6 +24,13 @@ IX_AZN_ST-1 = Open
 IX_AZN_ST-2 = Alarming
 ST-AZN-GV0-NAME = Bypassed
 
+ND-COMMAND_OUTPUT-NAME = Command Output
+ND-COMMAND_OUTPUT-ICON = Output
+ST-ACO-ST-NAME = Output State
+IX_ACO_ST-0 = Off
+IX_ACO_ST-1 = Active
+CMD-ACO-DON-NAME = Activate Output
+
 ND-PARTITION-NAME = Alarm Partition
 ND-PARTITION-ICON = GenericCtl
 ST-APA-ST-NAME = Partition State
@@ -36,9 +43,9 @@ IX_APA_ST-5 = Armed Stay Zero-Entry
 IX_APA_ST-6 = Alarming
 IX_APA_ST-7 = Exit Delay
 IX_APA_ST-8 = Entry Delay
-ST-APA-GV0-NAME = Chime Enabled
+ST-APA-GV0-NAME = Door Chime Enabled
 CMD-APA-DISARM-NAME = Disarm
 CMD-APA-ARM_AWAY-NAME = Arm Away
 CMD-APA-ARM_STAY-NAME = Arm Stay
 CMD-APA-ARM_ZEROENTRY-NAME = Arm Zero Entry
-
+CMD-APA-TOGGLE_CHIME-NAME = Toggle Door Chime

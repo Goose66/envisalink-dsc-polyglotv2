@@ -15,4 +15,7 @@
   <editor id="APA_STATE">
     <range uom="25" subset="0-8" nls="IX_APA_ST" />
   </editor>
+  <editor id="ACO_STATE">
+    <range uom="25" subset="0,1" nls="IX_ACO_ST" />
+  </editor>
 </editors>

@@ -5,6 +5,7 @@ import socket
 import logging
 import threading
 
+# Commands to control DSC Alarm Panel
 CMD_STATUS_REPORT = b"001"
 CMD_NETWORK_LOGIN = b"005"
 CMD_SET_TIME = b"010"
@@ -26,6 +27,7 @@ CMD_KEEP_ALIVE = b"074"
 CMD_RQST_HVAC_BDCST = b"080"
 CMD_SEND_CODE= b"200"
 
+# Response commands sent by DSC Alarm Panel
 CMD_ACK = b"500"
 CMD_ERR= b"501"
 CMD_SYSTEM_ERROR = b"502"
@@ -100,7 +102,12 @@ CMD_COMMAND_OUTPUT_PRESSED = b"912"
 CMD_MASTER_CODE_REQD = b"921"
 CMD_INSTALLER_CODE_REQD = b"922"
 
-SYS_ERROR_CODES = {
+# Keypad keystrokes for specific commands to be sent with CMD_SEND_KEYSTROKES
+KEYS_TOGGLE_DOOR_CHIME = "*4"
+KEYS_DUMP_BYPASS_ZONES = "*1#"
+
+# Error codes returned in data for CMD_SYSTEM_ERROR command
+_SYS_ERROR_CODES = {
     "000": "No Error.",
     "001": "Receive Buffer Overrun (a command is received while another is still being processed).",
     "002": "Receive Buffer Overflow.",
@@ -247,7 +254,7 @@ class EnvisaLinkInterface(object):
             elif cmd == CMD_SYSTEM_ERROR:
 
                 # log the system error
-                self._logger.warning("(%s) Envisalink returned system error code %s - %s.", cmd.decode("ascii"), data.decode("ascii"), SYS_ERROR_CODES[data.decode("ascii")])            
+                self._logger.warning("(%s) Envisalink returned system error code %s - %s.", cmd.decode("ascii"), data.decode("ascii"), _SYS_ERROR_CODES[data.decode("ascii")])            
 
             elif cmd == CMD_ACK:
 
