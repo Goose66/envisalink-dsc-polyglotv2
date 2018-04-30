@@ -39,6 +39,7 @@
     <sts>
 		 <st id="ST" editor="APA_STATE" />
      <st id="GV0" editor="ACP_BOOL" />
+     <st id="GV1" editor="_70_0" />
 	  </sts>
     <cmds>
       <accepts>

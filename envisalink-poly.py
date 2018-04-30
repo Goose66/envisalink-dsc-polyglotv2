@@ -9,6 +9,7 @@ import polyinterface
 
 _ISY_BOOL_UOM = 2 # Used for reporting status values for Controller node
 _ISY_INDEX_UOM = 25 # Index UOM for custom states (must match editor/NLS in profile):
+_ISY_USER_NUM_UOM = 70 # User Number UOM for reporting last user number
 _ISY_MINUTES_UOM = 45 # Used for reporting duration in minutes
 
 _LOGGER = polyinterface.LOGGER
@@ -16,6 +17,13 @@ _LOGGER = polyinterface.LOGGER
 _PART_ADDR_FORMAT_STRING = "partition%1d"
 _ZONE_ADDR_FORMAT_STRING = "zone%02d"
 _CMD_OUTPUT_ADDR_FORMAT_STRING = "cmdout%02d"
+
+_PARM_IP_ADDRESS_NAME = "ipaddress"
+_PARM_PASSWORD_NAME = "password"
+_PARM_USER_CODE_NAME = "usercode"
+_PARM_NUM_PARTITIONS_NAME = "numpartitions"
+_PARM_NUM_ZONES_NAME = "numzones"
+_PARM_NUM_CMD_OUTS_NAME = "numcmdouts"
 
 # Node class for partitions
 class Partition(polyinterface.Node):
@@ -69,6 +77,13 @@ class Partition(polyinterface.Node):
         elif cmd == EVL.CMD_CHIME_DISABLED:
             self.setDriver("GV0", 0)
 
+        elif cmd in (EVL.CMD_SPECIAL_OPENING, EVL.CMD_SPECIAL_CLOSING):
+            self.setDriver("GV1", 0)
+
+        elif cmd in (EVL.CMD_USER_CLOSING, EVL.CMD_USER_OPENING):
+            userNum = int(data.decode("ascii")[-4:])
+            self.setDriver("GV1", userNum)
+
     # Arm the partition in Away mode (the listener thread will update the corresponding driver values)
     def arm_away(self, command):
         
@@ -116,7 +131,8 @@ class Partition(polyinterface.Node):
 
     drivers = [
         {"driver": "ST", "value": 0, "uom": _ISY_INDEX_UOM},
-        {"driver": "GV0", "value": 0, "uom": _ISY_BOOL_UOM}
+        {"driver": "GV0", "value": 0, "uom": _ISY_BOOL_UOM},
+        {"driver": "GV1", "value": 0, "uom": _ISY_USER_NUM_UOM}
     ]
     commands = {
         "DISARM": disarm,
@@ -315,31 +331,42 @@ class AlarmPanel(polyinterface.Controller):
     # Start the nodeserver
     def start(self):
 
-        _LOGGER.info("Starting envisalink Nodeserver...")
+        _LOGGER.info("Starting envisaink Nodeserver...")
 
         # get controller information from custom parameters
         try:
-            customParams = self.poly.config["customParams"]
-            ip = customParams["ipaddress"]
-            password = customParams["password"]
-            self.userCode = customParams["usercode"]
+            ip = self.getCustomParam(_PARM_IP_ADDRESS_NAME)
+            password = self.getCustomParam(_PARM_PASSWORD_NAME)
+            self.userCode = self.getCustomParam(_PARM_USER_CODE_NAME)
         except KeyError:
-            _LOGGER.error("Missing controller settings in configuration.")
-            raise
+            _LOGGER.error("Missing controller settings in configuration. Nodeserver shutting down.")
 
-        # get number of partitions and number of zones
+            # Make sure the required custom parameters are in the configuration file
+            #self.addCustomParam({
+            #    _PARM_IP_ADDRESS_NAME: "0.0.0.0",
+            #    _PARM_PASSWORD_NAME: "Password",
+            #    _PARM_USER_CODE_NAME: "1234"
+            #})
+
+            # Add a notification to the ISY
+
+            raise SystemExit
+
+        # get the number of partitions, zones, and command outputs to create nodes for
         try:
-            self.numPartitions = int(customParams["numpartitions"])
-        except (KeyError, ValueError):
+            self.numPartitions = int(self.getCustomParam(_PARM_NUM_PARTITIONS_NAME))
+        except (KeyError, ValueError, TypeError):
             self.numPartitions = 1
 
         try:
-            numZones = int(customParams["numzones"])
-        except (KeyError, ValueError):
+            numZones = int(self.getCustomParam(_PARM_NUM_ZONES_NAME))
+        except (KeyError, ValueError, TypeError):
             numZones = 8
 
-        # For now, four command outs on partition 1 supported
-        numCmdOuts = 4
+        try:
+            numCmdOuts = int(self.getCustomParam(_PARM_NUM_CMD_OUTS_NAME))
+        except (KeyError, ValueError, TypeError):
+            numCmdOuts = 4
 
         # dump the self._nodes to the log
         #_LOGGER.debug("Current Node Configuration: %s", str(self._nodes))
@@ -395,7 +422,7 @@ class AlarmPanel(polyinterface.Controller):
     def initial_poll(self):
 
         # send the status polling command to the EnvisaLink device
-        # Only generates general zone status and trouble LED updates
+        # Only generates general zone status and trouble LED on keypad
         self.envisalink.send_command(EVL.CMD_STATUS_REPORT)
 
         # the status polling command generates a considerable amount of response commands
@@ -422,7 +449,11 @@ class AlarmPanel(polyinterface.Controller):
             EVL.CMD_EXIT_DELAY_IN_PROGRESS,
             EVL.CMD_ENTRY_DELAY_IN_PROGRESS,
             EVL.CMD_CHIME_ENABLED,
-            EVL.CMD_CHIME_DISABLED
+            EVL.CMD_CHIME_DISABLED,
+            EVL.CMD_USER_OPENING,
+            EVL.CMD_USER_CLOSING,
+            EVL.CMD_SPECIAL_OPENING,
+            EVL.CMD_SPECIAL_CLOSING
         ):
 
             # get the partition number from the data

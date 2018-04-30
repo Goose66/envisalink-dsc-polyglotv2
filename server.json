@@ -10,7 +10,7 @@
         {
             "title": "autelis-poly: a Polyglot NodeServer for Autelis Pool Control Integration",
             "author": "W. Randy King (Goose66)",
-            "version": "0.0.2",
+            "version": "0.0.3",
             "date": "April 19, 2018",
             "source": "https://github.com/Goose66/envisalink-dsc-polyglotv2",
             "license": "https://github.com/Goose66/envisalink-dsc-polyglotv2/master/LICENSE"

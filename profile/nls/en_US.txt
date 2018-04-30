@@ -44,6 +44,7 @@ IX_APA_ST-6 = Alarming
 IX_APA_ST-7 = Exit Delay
 IX_APA_ST-8 = Entry Delay
 ST-APA-GV0-NAME = Door Chime Enabled
+ST-APA-GV1-NAME = Last Arm/Disarm User
 CMD-APA-DISARM-NAME = Disarm
 CMD-APA-ARM_AWAY-NAME = Arm Away
 CMD-APA-ARM_STAY-NAME = Arm Stay
