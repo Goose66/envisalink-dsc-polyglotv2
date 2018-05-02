@@ -4,14 +4,14 @@
     "type": "python3",
     "executable": "envisalink-poly.py",
     "install": "install.sh",
-    "description": "Accesses a DSC PowerSeries alarm panel through an EnvisaLink EVL-3/4.",
+    "description": "Accesses a DSC PowerSeries alarm panel through an EnvisaLink EVL-3/4 device.",
     "notice": "",
     "credits": [
         {
-            "title": "autelis-poly: a Polyglot NodeServer for Autelis Pool Control Integration",
+            "title": "envisalink-poly: a Polyglot NodeServer for EnvisaLink EVL-3/4 Device to DSC Alarm Panel",
             "author": "W. Randy King (Goose66)",
             "version": "1.0.3",
-            "date": "April 19, 2018",
+            "date": "May 1, 2018",
             "source": "https://github.com/Goose66/envisalink-dsc-polyglotv2",
             "license": "https://github.com/Goose66/envisalink-dsc-polyglotv2/master/LICENSE"
         }
