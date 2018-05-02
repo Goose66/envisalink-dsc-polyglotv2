@@ -4,7 +4,7 @@
     "type": "python3",
     "executable": "envisalink-poly.py",
     "install": "install.sh",
-    "description": "Accesses a DSC PowerSeries alarm panel through an EnvisaLink EVL-3/4 to allow ISY 994i to control alarm functions and respond to events.",
+    "description": "Accesses a DSC PowerSeries alarm panel through an EnvisaLink EVL-3/4.",
     "notice": "",
     "credits": [
         {
