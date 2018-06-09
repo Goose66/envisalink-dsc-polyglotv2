@@ -2,10 +2,7 @@
   <nodeDef id="CONTROLLER" nls="ACP">
     <sts>
       <st id="ST" editor="ACP_BOOL" />
-      <st id="GV0" editor="ACP_ALARM_STATE" />
-      <st id="GV1" editor="ACP_ALARM_STATE" />
-		  <st id="GV2" editor="ACP_ALARM_STATE" />
-		  <st id="GV3" editor="ACP_ALARM_STATE" />
+      <st id="GV0" editor="ACP_SYSTEM_ALARM_STATE" />
 		  <st id="GV4" editor="ACP_BOOL" />
 		  <st id="GV5" editor="ACP_BOOL" />
 		  <st id="GV6" editor="ACP_BOOL" />
@@ -19,7 +16,10 @@
 			  <cmd id="PANIC_AUX" />
 			  <cmd id="PANIC_POLICE" />
       </accepts>
-      <sends />
+      <sends>
+        <cmd id="DON" />
+        <cmd id="DOF" />
+      </sends>
     </cmds>
   </nodeDef>
   <nodeDef id="ZONE" nls="AZN" >
@@ -42,6 +42,10 @@
      <st id="GV1" editor="_70_0" />
 	  </sts>
     <cmds>
+      <sends>
+      	<cmd id="DON" />
+    		<cmd id="DOF" />       
+      </sends>
       <accepts>
       	<cmd id="DISARM" />
     		<cmd id="ARM_AWAY" />

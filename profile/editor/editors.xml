@@ -4,8 +4,8 @@
     <range uom="2" subset="0,1" />
   </editor>
   <!-- ISY Index UOM with custom labels in NLS -->
-  <editor id="ACP_ALARM_STATE">
-    <range uom="25" subset="0,1" nls="IX_ACP_AS" />
+  <editor id="ACP_SYSTEM_ALARM_STATE">
+    <range uom="25" subset="0-4" nls="IX_ACP_SAS" />
   </editor>
   <!-- ISY Index UOM with custom labels in NLS -->
   <editor id="AZN_STATE">

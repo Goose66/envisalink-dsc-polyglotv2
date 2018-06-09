@@ -139,12 +139,11 @@ _BUFFER_SIZE = 1024
 class EnvisaLinkInterface(object):
 
     # Primary constructor method
-    def __init__(self, deviceAddr, password, commandCallback=None, logger=None):
+    def __init__(self, logger=None):
 
         # declare instance variables
         self._evlConnection = None
         self._listenerThread = None
-        self._commandHandler = commandCallback
         self._lastCmd = b''
         self._sendLock = threading.Lock()
 
@@ -155,11 +154,29 @@ class EnvisaLinkInterface(object):
         else:
             self._logger = logger
 
-        # establish connection to EnvisaLink
-        self._setup_connection(deviceAddr, password, commandCallback)
+    def connect(self, deviceAddr, password, commandCallback=None):
+        
+        if self._connect_evl(deviceAddr, password):
+
+            self._logger.debug("Starting listener thread...")
+            
+            # setup thread for listener for commands from EnvisaLink with specified callback function
+            self._listenerThread = threading.Thread(target=self._command_listener, args=(commandCallback,))
+            self._listenerThread.daemon = True
+            try:
+                self._listenerThread.start()
+            except:
+                self._logger.error("Error starting listener thread.")
+                raise
+
+            return True
+        
+        else:
+            
+            return False
 
     # Connect to EnvisaLink and login
-    def _setup_connection(self, deviceAddr, password, commandCallback):
+    def _connect_evl(self, deviceAddr, password):
 
         self._logger.debug("Connecting to EnvisaLink device...")
 
@@ -170,14 +187,14 @@ class EnvisaLinkInterface(object):
         self._evlConnection = connect(deviceAddr, initialTimeout, self._logger)
         if self._evlConnection is None:
             self._logger.error("Unable to establish connection with EnvisaLink device.")
-            return
+            return False
 
         # wait for password request
         cmd_seq = get_next_cmd_seq(self._evlConnection, self._logger)
         if cmd_seq is None or (cmd_seq[0] != CMD_LOGIN_INTERACTION or cmd_seq[1] != b"3"):
             self._logger.error("Invalid sequence received from EnvisaLink upon connection: %s", cmd_seq)
             self._evlConnection.close()
-            return
+            return False
 
         # send password to EVL
         send_cmd(self._evlConnection, CMD_NETWORK_LOGIN, password.encode("ascii"), self._logger)
@@ -185,18 +202,19 @@ class EnvisaLinkInterface(object):
         if cmd_seq is None or (cmd_seq[0] != CMD_ACK or cmd_seq[1] != CMD_NETWORK_LOGIN):
             self._logger.error("Failure in sending password to EnvisaLink. Received sequence: %s", cmd_seq)
             self._evlConnection.close()
-            return 
+            return False
         
         # wait for login verification
         cmd_seq = get_next_cmd_seq(self._evlConnection, self._logger)
         if cmd_seq is None or (cmd_seq[0] != CMD_LOGIN_INTERACTION or cmd_seq[1] not in (b"0", b"1")):
             self._logger.error("Invalid sequence received from EnvisaLink on login: %s", cmd_seq)
             self._evlConnection.close()
-            return
+            return False
+
         elif cmd_seq[1] == b"0":
             self._logger.error("Invalid password specified. Login failed.")
             self._evlConnection.close()
-            return
+            return False
 
         # send a command to the EnvisaLink to send time broadcasts (every 4 minutes) to be used as a keepalive
         send_cmd(self._evlConnection, CMD_TIME_BROADCAST_CONTROL, b"1", self._logger)
@@ -204,23 +222,16 @@ class EnvisaLinkInterface(object):
         if cmd_seq is None or (cmd_seq[0] != CMD_ACK or cmd_seq[1] != CMD_TIME_BROADCAST_CONTROL):
             self._logger.error("Failure in setting time broadcasts on EnvisaLink. Received sequence: %s", cmd_seq)
             self._evlConnection.close()
-            return
+            return False
 
         # set a longer timeout on the socket for remaining calls (5 minutes)
         self._evlConnection.settimeout(300)
 
-        # setup thread for listener for commands from EnvisaLink with specified callback function
-        self._listenerThread = threading.Thread(target=self._command_listener, args=())
-        self._listenerThread.daemon = True
-        try:
-            self._listenerThread.start()
-        except:
-            self._logger.error("Error starting listener thread.")
-            raise
+        return True
 
     # Monitors the EnvisaLink for TPI commands and updates node status in the nodeserver
     # To be executed on seperate, non-blocking thread
-    def _command_listener(self):
+    def _command_listener(self, commandCallback):
 
         self._logger.debug("In command_listener()...")
 
@@ -278,9 +289,9 @@ class EnvisaLinkInterface(object):
             else:
 
                 # call status update callback function
-                if not self._commandHandler is None:
-                    if not self._commandHandler(cmd, data):
-                        self._logger.warning("Unhandled command received from EnvisaLink. Command: %s, Data: %s", cmd.decode("ascii"), data.decode("ascii"))
+                if not commandCallback is None:
+                    if not commandCallback(cmd, data):
+                        self._logger.debug("Unhandled command received from EnvisaLink. Command: %s, Data: %s", cmd.decode("ascii"), data.decode("ascii"))
 
     # Send command to Envisalink - manage thread lock to prevent stepping on thread
     # Parameters:   cmd - bytearray with 3 digit command
