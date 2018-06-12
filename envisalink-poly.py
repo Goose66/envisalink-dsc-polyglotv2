@@ -48,7 +48,7 @@ class Partition(polyinterface.Node):
     def update_state_values(self, cmd, data):
 
         # update the ST value
-        if cmd == EVL.CMD_PARTITION_READY:
+        if cmd in (EVL.CMD_PARTITION_READY, EVL.CMD_PARTITION_READY_FORCE_ARM):
             self.setDriver("ST", 0) # Ready
 
             self.readyState = True
@@ -105,6 +105,7 @@ class Partition(polyinterface.Node):
         elif cmd == EVL.CMD_CHIME_DISABLED:
             self.setDriver("GV0", 0)
 
+        # update the GV1 (last disarming user) value
         elif cmd in (EVL.CMD_SPECIAL_OPENING, EVL.CMD_SPECIAL_CLOSING):
             self.setDriver("GV1", 0)
 

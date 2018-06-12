@@ -197,7 +197,7 @@ class EnvisaLinkInterface(object):
             return False
 
         # send password to EVL
-        send_cmd(self._evlConnection, CMD_NETWORK_LOGIN, password.encode("ascii"), self._logger)
+        send_cmd(self._evlConnection, CMD_NETWORK_LOGIN, password[:6].encode("ascii"), self._logger)
         cmd_seq = get_next_cmd_seq(self._evlConnection, self._logger)
         if cmd_seq is None or (cmd_seq[0] != CMD_ACK or cmd_seq[1] != CMD_NETWORK_LOGIN):
             self._logger.error("Failure in sending password to EnvisaLink. Received sequence: %s", cmd_seq)
