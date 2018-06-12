@@ -10,8 +10,8 @@
         {
             "title": "envisalink-poly: a Polyglot NodeServer for the EnvisaLink EVL-3/4 device (DSC)",
             "author": "W. Randy King (Goose66)",
-            "version": "1.1.4",
-            "date": "June 8, 2018",
+            "version": "1.2.5",
+            "date": "June 12, 2018",
             "source": "https://github.com/Goose66/envisalink-dsc-polyglotv2",
             "license": "https://github.com/Goose66/envisalink-dsc-polyglotv2/master/LICENSE"
         }
