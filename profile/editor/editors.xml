@@ -1,7 +1,6 @@
 <editors>
-  <!-- ISY Bool UOM -->
-  <editor id="ACP_BOOL">
-    <range uom="2" subset="0,1" />
+  <editor id="ACP_LOGLEVEL">
+    <range uom="25" subset="0,10,20,30,40,50" nls="IX_ACP_LL" />
   </editor>
   <!-- ISY Index UOM with custom labels in NLS -->
   <editor id="ACP_SYSTEM_ALARM_STATE">

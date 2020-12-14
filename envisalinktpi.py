@@ -5,8 +5,15 @@ import socket
 import logging
 import threading
 
+# Pickup the root logger, and add a handler for module testing if none exists
+_LOGGER = logging.getLogger()
+if not _LOGGER.hasHandlers():
+    logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', level=logging.DEBUG)
+
 # Commands to control DSC Alarm Panel
+CMD_POLL = b"000"
 CMD_STATUS_REPORT = b"001"
+CMD_DUMP_ZONE_TIMERS = b"008"
 CMD_NETWORK_LOGIN = b"005"
 CMD_SET_TIME = b"010"
 CMD_ACTIVATE_CMD_OUTPUT = b"020"
@@ -133,13 +140,16 @@ _SYS_ERROR_CODES = {
 
 _EVL_TCP_PORT = 4025
 
+_INITIAL_SOCKET_TIMEOUT = 0.5 # socket send/receive timeout for initial handshake (500ms)
+_LISTENER_SOCKET_TIMEOUT = 600 # socket receive timeout for listener (10 minutes)
+
 _msgBuffer = bytearray()
 _BUFFER_SIZE = 1024
 
 class EnvisaLinkInterface(object):
 
     # Primary constructor method
-    def __init__(self, logger=None):
+    def __init__(self, logger=_LOGGER):
 
         # declare instance variables
         self._evlConnection = None
@@ -147,21 +157,16 @@ class EnvisaLinkInterface(object):
         self._lastCmd = b''
         self._sendLock = threading.Lock()
 
-        # setup basic console logger for debugging
-        if logger is None:
-            logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", level=logging.DEBUG)
-            self._logger = logging.getLogger() # Root logger
-        else:
-            self._logger = logger
+        self._logger = logger
 
-    def connect(self, deviceAddr, password, commandCallback=None):
-        
+    def connect(self, deviceAddr, password, cmdCallback=None, hbCallback=None):
+
         if self._connect_evl(deviceAddr, password):
 
             self._logger.debug("Starting listener thread...")
             
             # setup thread for listener for commands from EnvisaLink with specified callback function
-            self._listenerThread = threading.Thread(target=self._command_listener, args=(commandCallback,))
+            self._listenerThread = threading.Thread(target=self._command_listener, args=(cmdCallback,hbCallback,))
             self._listenerThread.daemon = True
             try:
                 self._listenerThread.start()
@@ -180,11 +185,8 @@ class EnvisaLinkInterface(object):
 
         self._logger.debug("Connecting to EnvisaLink device...")
 
-        # set initial timeout value for socket connection during login sequence
-        initialTimeout = 0.5
-
         # connect to the EnvisaLink device
-        self._evlConnection = connect(deviceAddr, initialTimeout, self._logger)
+        self._evlConnection = connect(deviceAddr, _INITIAL_SOCKET_TIMEOUT, self._logger)
         if self._evlConnection is None:
             self._logger.error("Unable to establish connection with EnvisaLink device.")
             return False
@@ -224,14 +226,14 @@ class EnvisaLinkInterface(object):
             self._evlConnection.close()
             return False
 
-        # set a longer timeout on the socket for remaining calls (5 minutes)
-        self._evlConnection.settimeout(300)
+        # set a longer timeout on the socket for listener 
+        self._evlConnection.settimeout(_LISTENER_SOCKET_TIMEOUT)
 
         return True
 
     # Monitors the EnvisaLink for TPI commands and updates node status in the nodeserver
     # To be executed on seperate, non-blocking thread
-    def _command_listener(self, commandCallback):
+    def _command_listener(self, cmdCallback, hbCallback):
 
         self._logger.debug("In command_listener()...")
 
@@ -241,9 +243,12 @@ class EnvisaLinkInterface(object):
             # get next status message
             cmd_seq = get_next_cmd_seq(self._evlConnection, self._logger)
 
-            # if the cmd_seq is blank, then an error occurred (connection occured or timeout)
+            # if the cmd_seq is blank, then an error occurred (either socket error or timeout)
+            # NOTE: right now we treat this as an error since the EVL should be broadcasting a time broadcast 
+            # every _LISTENER_SOCKET_TIMEOUT seconds. Call function should reconnect
             if cmd_seq is None:
-                self._logger.error("No data returned by EnvisaLink device. Listener thread terminated.")
+                self._logger.error("No data returned by EnvisaLink device. Probable connection error or timeout. Shutting down socket and listener thread.")
+                self._evlConnection.close()
                 return
 
             # extract the command and data
@@ -254,9 +259,11 @@ class EnvisaLinkInterface(object):
             if cmd == CMD_TIME_BROADCAST:
                 
                 # time broadcasts sent every four minutes and used as keep-alive
-                # (timeout set to 5 minutes). Just ignore.
-                pass
-            
+                # (timeout set to 5 minutes). Call heartbeat callback if defined
+                # otherwise ignore
+                if hbCallback is not None:
+                    hbCallback()
+
             elif cmd == CMD_ERR:
 
                 # log bad checksum error
@@ -289,9 +296,9 @@ class EnvisaLinkInterface(object):
             else:
 
                 # call status update callback function
-                if not commandCallback is None:
-                    if not commandCallback(cmd, data):
-                        self._logger.debug("Unhandled command received from EnvisaLink. Command: %s, Data: %s", cmd.decode("ascii"), data.decode("ascii"))
+                if not cmdCallback is None:
+                    cmdCallback(cmd, data.decode("ascii"))
+
 
     # Send command to Envisalink - manage thread lock to prevent stepping on thread
     # Parameters:   cmd - bytearray with 3 digit command
@@ -344,6 +351,13 @@ class EnvisaLinkInterface(object):
 
         # close the connection
         self._evlConnection.close()
+
+    # Check the state of the socket connection
+    def connected(self):
+        if self._evlConnection.fileno() > 0:
+            return True
+        else:
+            return False
 
 # Establish a TCP connection to device
 # Parameters:   ipAddr - IP4 address of device
@@ -409,12 +423,14 @@ def get_next_cmd_seq(s, logger):
         except socket.error as e:
             logger.error("TCP Connection to EnvisaLink unexpectedly closed. Socket error: %s", str(e))
             s.close()
+            _msgBuffer = None
             raise
         except:
             raise
 
         if len(msg) == 0:
             logger.error("TCP Connection to EnvisaLink unexpectedly closed.")
+
         else:
             _msgBuffer += msg
 

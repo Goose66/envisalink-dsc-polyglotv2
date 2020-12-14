@@ -6,12 +6,14 @@
     "install": "install.sh",
     "description": "Accesses DSC PowerSeries alarm panels via EnvisaLink EVL-3/4 for ISY access to alarm functions and events.",
     "notice": "",
+    "shortPoll": "30",
+    "longPoll": "600",
     "credits": [
         {
             "title": "envisalink-poly: a Polyglot NodeServer for the EnvisaLink EVL-3/4 device (DSC)",
             "author": "W. Randy King (Goose66)",
-            "version": "1.2.5",
-            "date": "June 12, 2018",
+            "version": "2.0.6",
+            "date": "December 15, 2020",
             "source": "https://github.com/Goose66/envisalink-dsc-polyglotv2",
             "license": "https://github.com/Goose66/envisalink-dsc-polyglotv2/master/LICENSE"
         }
