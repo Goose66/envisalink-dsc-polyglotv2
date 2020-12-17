@@ -2,15 +2,12 @@
   <editor id="ACP_LOGLEVEL">
     <range uom="25" subset="0,10,20,30,40,50" nls="IX_ACP_LL" />
   </editor>
-  <!-- ISY Index UOM with custom labels in NLS -->
   <editor id="ACP_SYSTEM_ALARM_STATE">
     <range uom="25" subset="0-4" nls="IX_ACP_SAS" />
   </editor>
-  <!-- ISY Index UOM with custom labels in NLS -->
   <editor id="AZN_STATE">
     <range uom="25" subset="0-2" nls="IX_AZN_ST" />
   </editor>
-  <!-- ISY Index UOM with custom labels in NLS -->
   <editor id="APA_STATE">
     <range uom="25" subset="0-8" nls="IX_APA_ST" />
   </editor>

@@ -9,6 +9,9 @@
 		  <st id="GV6" editor="_2_0" /> <!-- ISY Bool UOM -->
 		  <st id="GV7" editor="_2_0" /> <!-- ISY Bool UOM -->
 		  <st id="GV8" editor="_2_0" /> <!-- ISY Bool UOM -->
+		  <st id="GV9" editor="_2_0" /> <!-- ISY Bool UOM -->
+		  <st id="GV10" editor="_2_0" /> <!-- ISY Bool UOM -->
+		  <st id="GV11" editor="_2_0" /> <!-- ISY Bool UOM -->
       <st id="GV20" editor="ACP_LOGLEVEL" />
 	  </sts>
 	  <cmds>

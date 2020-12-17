@@ -2,7 +2,6 @@
 # Polyglot Node Server for EnvisaLink EVL 3/4 Device (DSC)
 
 import sys
-import time
 import envisalinktpi as EVL
 import polyinterface
 
@@ -10,9 +9,7 @@ import polyinterface
 _ISY_BOOL_UOM = 2 # Used for reporting status values for Controller node
 _ISY_INDEX_UOM = 25 # Index UOM for custom states (must match editor/NLS in profile):
 _ISY_USER_NUM_UOM = 70 # User Number UOM for reporting last user number
-_ISY_MINUTES_UOM = 45 # Used for reporting duration in minutes
 _ISY_SECONDS_UOM = 58 # used for reporting duration in seconds
-
 
 _LOGGER = polyinterface.LOGGER
 
@@ -364,35 +361,80 @@ class AlarmPanel(polyinterface.Controller):
             # Clear the system alarm state
             self.setDriver("GVO", _IX_ALARM_STATE_OK) # Not Alarming
 
-        # update the GV4 (Bell Trouble) value
+        # Handle trouble states
+        # Note: the access to trouble status through EnvsiaLink's TPI doesn't seem to align with the description of the
+        # trouble states in the DSC panels and documentation. This implementation is a mishmash of system trouble reporting
+        # and trouble LED indicators for partition 1
+
+        # update the GV4 (Bell Trouble) value for Bell Trouble commands
         elif cmd == EVL.CMD_BELL_TROUBLE:
             self.setDriver("GV4", 1) 
-        elif cmd == EVL.CMD_BELL_TROUBLE_RESORED:
+        elif cmd == EVL.CMD_BELL_TROUBLE_RESTORED:
             self.setDriver("GV4", 0) 
 
-        # update the GV5 (Battery Trouble) value
+        # update the GV5 (Battery Trouble) value for Panel Battery Trouble commands
         elif cmd == EVL.CMD_BATTERY_TROUBLE:
             self.setDriver("GV5", 1) 
         elif cmd == EVL.CMD_BATTERY_TROUBLE_RESTORED:
             self.setDriver("GV5", 0) 
 
-        # update the GV6 (AC Trouble) value
+        # update the GV6 (AC Trouble) value for AC Trouble commands
         elif cmd == EVL.CMD_AC_TROUBLE:
             self.setDriver("GV6", 1)
         elif cmd == EVL.CMD_AC_TROUBLE_RESTORED:
             self.setDriver("GV6", 0)
 
-        # update the GV7 (FTC Trouble) value
+        # update the GV7 (FTC Trouble) value for FTC Trouble commands
         elif cmd == EVL.CMD_FTC_TROUBLE:
             self.setDriver("GV7", 1)
         elif cmd == EVL.CMD_FTC_TROUBLE_RESTORED:
             self.setDriver("GV7", 0)
 
-        # update the GV8 (Tamper Trouble) value
+        # update the GV8 (Tamper Trouble) value for General System Tamper commands
         elif cmd == EVL.CMD_SYSTEM_TAMPER:
             self.setDriver("GV8", 1)
         elif cmd == EVL.CMD_SYSTEM_TAMPER_RESTORED:
             self.setDriver("GV8", 0)
+
+        # update the GV9 (Fire Trouble) value
+        elif cmd == EVL.CMD_FIRE_TROUBLE:
+            self.setDriver("GV9", 1)
+        elif cmd == EVL.CMD_FIRE_TROUBLE_RESTORED:
+            self.setDriver("GV9", 0)
+
+        # update trouble state values from the trouble LED states
+        elif cmd == EVL.CMD_VERBOSE_TROUBLE_STATUS:
+            
+            # convert the hex value string in the data to a numeric value
+            bitfield = int(data,base=16) 
+
+            # update the various trouble states based on the bit
+            if (bitfield & 0b00000010): # AC Power Lost
+                self.setDriver("GV6", 1) # set GV6 (AC Trouble)       
+
+            if (bitfield & 0b00000100) or (bitfield & 0b00001000): # Telephone Line Fault or Failure to Communicate
+                self.setDriver("GV7", 1) # set GV7 (FTC Trouble)
+            
+            if (bitfield & 0b00010000): # Sensor/Zone Fault
+                self.setDriver("GV10", 1) # set GV10 (Zone Fault)      
+
+            if (bitfield & 0b00100000): # Sensor/Zone Tamper
+                self.setDriver("GV8", 1) # set GV8 (Tamper Trouble)      
+
+            if (bitfield & 0b01000000): # Sensor/Zone Low Battery
+                self.setDriver("GV11", 1) # set GV11 (Zone Sensor Low Battery)
+
+        # clear all trouble states if trouble LED for partition 1 is turned off
+        elif cmd == EVL.CMD_TROUBLE_LED_OFF and int(data[:1]) == 1:
+        
+            self.setDriver("GV4", 0) # Bell Trouble
+            self.setDriver("GV5", 0) # Battery Trouble
+            self.setDriver("GV6", 0) # AC Trouble
+            self.setDriver("GV7", 0) # FTC Trouble
+            self.setDriver("GV8", 0) # Tamper Trouble
+            self.setDriver("GV9", 0) # Fire Trouble
+            self.setDriver("GV10", 0) # Zone Fault
+            self.setDriver("GV11", 0) # Zone Sensor Low Battery
 
     # Trigger the panic fire alarm (the listener thread will update the corresponding driver values)
     def trigger_panic_fire(self, command):
@@ -730,7 +772,7 @@ class AlarmPanel(polyinterface.Controller):
             EVL.CMD_PANIC_KEY_ALARM,
             EVL.CMD_PANIC_KEY_RESTORED,
             EVL.CMD_BELL_TROUBLE,
-            EVL.CMD_BELL_TROUBLE_RESORED,
+            EVL.CMD_BELL_TROUBLE_RESTORED,
             EVL.CMD_BATTERY_TROUBLE,
             EVL.CMD_BATTERY_TROUBLE_RESTORED,
             EVL.CMD_AC_TROUBLE,
@@ -738,7 +780,12 @@ class AlarmPanel(polyinterface.Controller):
             EVL.CMD_FTC_TROUBLE,
             EVL.CMD_FTC_TROUBLE_RESTORED,
             EVL.CMD_SYSTEM_TAMPER,
-            EVL.CMD_SYSTEM_TAMPER_RESTORED
+            EVL.CMD_SYSTEM_TAMPER_RESTORED,
+            EVL.CMD_FIRE_TROUBLE,
+            EVL.CMD_FIRE_TROUBLE_RESTORED,
+            EVL.CMD_TROUBLE_LED_ON,
+            EVL.CMD_TROUBLE_LED_OFF,
+            EVL.CMD_VERBOSE_TROUBLE_STATUS
         ):
 
             # update the driver values of the node from the commands
@@ -838,6 +885,9 @@ class AlarmPanel(polyinterface.Controller):
         {"driver": "GV6", "value": 0, "uom": _ISY_BOOL_UOM},
         {"driver": "GV7", "value": 0, "uom": _ISY_BOOL_UOM},
         {"driver": "GV8", "value": 0, "uom": _ISY_BOOL_UOM},
+        {"driver": "GV9", "value": 0, "uom": _ISY_BOOL_UOM},
+        {"driver": "GV10", "value": 0, "uom": _ISY_BOOL_UOM},
+        {"driver": "GV11", "value": 0, "uom": _ISY_BOOL_UOM},
         {"driver": "GV20", "value": 0, "uom": _ISY_INDEX_UOM}
     ]
 
