@@ -143,7 +143,7 @@ _EVL_TCP_PORT = 4025
 _INITIAL_SOCKET_TIMEOUT = 0.5 # socket send/receive timeout for initial handshake (500ms)
 _LISTENER_SOCKET_TIMEOUT = 600 # socket receive timeout for listener (10 minutes)
 
-_msgBuffer = bytearray()
+_msgBuffer = None
 _BUFFER_SIZE = 1024
 
 class EnvisaLinkInterface(object):
@@ -366,6 +366,8 @@ def connect(ipAddr, timeout, logger):
 
     logger.debug("In connect()...")        
 
+    global _msgBuffer
+
     # Open a socket for communication with the device at the specified address
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(timeout)
@@ -378,6 +380,9 @@ def connect(ipAddr, timeout, logger):
     except:
         raise
     
+    # initialize a new message buffer for the socket connection
+    _msgBuffer = bytearray()
+
     return s
 
 # Send a command to the device
@@ -417,19 +422,20 @@ def get_next_cmd_seq(s, logger):
         
         try:
             msg = s.recv(_BUFFER_SIZE)
-        except socket.timeout:
+        # Note that the listener thread exits for both timeout and errors, so for now we basically
+        # handle them the same
+        except (socket.timeout, TimeoutError):
             logger.debug("recv() timed out - no data returned.")
             return None
         except socket.error as e:
             logger.error("TCP Connection to EnvisaLink unexpectedly closed. Socket error: %s", str(e))
             s.close()
-            _msgBuffer = None
-            raise
+            return None
         except:
             raise
 
         if len(msg) == 0:
-            logger.error("TCP Connection to EnvisaLink unexpectedly closed.")
+            logger.error("TCP Connection to EnvisaLink closed with no error.")
 
         else:
             _msgBuffer += msg

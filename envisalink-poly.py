@@ -32,6 +32,13 @@ _DEFAULT_NUM_PARTITIONS = 1
 _DEFAULT_NUM_ZONES = 16
 _DEFAULT_NUM_CMDOUTS = 4
 
+# values for zonetimerdumpflag in custom configuration'
+_PARM_ZONE_TIMER_DUMP_FLAG = "zonetimerdumpflag"
+_ZONE_TIMER_DUMP_DISABLED = 0
+_ZONE_TIMER_DUMP_SHORTPOLL = 1
+_ZONE_TIMER_DUMP_LONGPOLL = 2
+_DEFAULT_ZONE_TIMER_DUMP_FLAG = _ZONE_TIMER_DUMP_SHORTPOLL
+
 # constants from nodeserver profile
 _IX_ALARM_STATE_OK = 0
 _IX_ALARM_STATE_SMOKE = 1
@@ -55,6 +62,8 @@ _IX_PARTITION_STATE_DELAY_ENTRY = 8
 
 _IX_COMMAND_STATE_OFF = 0
 _IX_COMMAND_STATE_ACTIVE = 1
+
+
 
 # Node class for partitions
 class Partition(polyinterface.Node):
@@ -577,7 +586,12 @@ class AlarmPanel(polyinterface.Controller):
         # NOTE: this prevents the EnvisaLink from resetting the connection if it can't communicate with EyezON service
         if self.disableWDTimer and self.envisalink is not None and self.envisalink.connected():
             self.envisalink.send_command(EVL.CMD_POLL)
-    
+            
+        # if connection and all partitions have had zone bypass dumps, check zone timer dump flag
+        # and force a zone timer dump
+        if self.zoneTimerDumpFlag == _ZONE_TIMER_DUMP_LONGPOLL:
+            self.envisalink.send_command(EVL.CMD_DUMP_ZONE_TIMERS)
+
     # called every short_poll seconds
     def shortPoll(self):
 
@@ -631,8 +645,10 @@ class AlarmPanel(polyinterface.Controller):
                     # exit the function leaving the remaining partitions for a subsequent shortPoll()
                     return
         
-            # if connection and all partitions have had zone bypass dumps, then force a zone timer dump
-            self.envisalink.send_command(EVL.CMD_DUMP_ZONE_TIMERS)
+            # if connection and all partitions have had zone bypass dumps, check zone timer dump flag
+            # and force a zone timer dump
+            if self.zoneTimerDumpFlag == _ZONE_TIMER_DUMP_SHORTPOLL:
+                self.envisalink.send_command(EVL.CMD_DUMP_ZONE_TIMERS)
              
     # Get custom configuration parameter values
     def getCustomParams(self):
@@ -700,6 +716,12 @@ class AlarmPanel(polyinterface.Controller):
             self.disableWDTimer = (int(customParams[_PARM_DISABLE_WATCHDOG_TIMER]) == 1)
         except (KeyError, ValueError, TypeError):
             self.disableWDTimer = False
+
+        # get optional settings for zone timer dump frequency
+        try:
+            self.zoneTimerDumpFlag = int(customParams[_PARM_ZONE_TIMER_DUMP_FLAG])
+        except (KeyError, ValueError, TypeError):
+            self.zoneTimerDumpFlag = _DEFAULT_ZONE_TIMER_DUMP_FLAG
 
         self.poly.saveCustomParams(customParams)
 
